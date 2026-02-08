@@ -1,0 +1,19 @@
+[project]
+name = "nanogpt"
+version = "0.1.0"
+description = "The simplest, fastest repository for training/finetuning medium-sized GPTs."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "datasets",
+    "numpy",
+    "requests",
+    "tiktoken",
+    "torch",
+    "tqdm",
+    "transformers",
+    "wandb",
+]
+
+[tool.uv]
+package = false
