@@ -22,4 +22,6 @@ out*/
 training_log.txt
 
 # Local dataset source files
-input.txt
+*.txt
+
+logs/

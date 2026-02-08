@@ -20,6 +20,7 @@ seed = 1337
 device = 'cuda' # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1', etc.
 dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else 'float16' # 'float32' or 'bfloat16' or 'float16'
 compile = False # use PyTorch 2.0 to compile the model to be faster
+save_to = '' # optional output path to also save generated text
 exec(open('configurator.py').read()) # overrides from command line or config file
 # -----------------------------------------------------------------------------
 
@@ -81,9 +82,21 @@ start_ids = encode(start)
 x = (torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...])
 
 # run generation
+samples_out = []
 with torch.no_grad():
     with ctx:
         for k in range(num_samples):
             y = model.generate(x, max_new_tokens, temperature=temperature, top_k=top_k)
-            print(decode(y[0].tolist()))
+            text = decode(y[0].tolist())
+            print(text)
             print('---------------')
+            samples_out.append(text)
+
+if save_to:
+    save_dir = os.path.dirname(save_to)
+    if save_dir:
+        os.makedirs(save_dir, exist_ok=True)
+    with open(save_to, 'w', encoding='utf-8') as f:
+        f.write('\n---------------\n'.join(samples_out))
+        f.write('\n')
+    print(f"Saved samples to {save_to}")
