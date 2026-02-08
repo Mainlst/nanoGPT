@@ -25,3 +25,4 @@ training_log.txt
 *.txt
 
 logs/
+wandb/
