@@ -1,0 +1,12 @@
+{
+  "rtx_3070_8gb_train_gpt2": {
+    "dtype": "float16",
+    "compile": false,
+    "batch_size": 2,
+    "block_size": 256,
+    "grad_accum": 16,
+    "n_layer": 8,
+    "n_head": 8,
+    "n_embd": 512
+  }
+}
