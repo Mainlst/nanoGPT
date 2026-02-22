@@ -26,6 +26,29 @@ class LayerNorm(nn.Module):
     def forward(self, input):
         return F.layer_norm(input, self.weight.shape, self.weight, self.bias, 1e-5)
 
+# add
+class RMSNorm(nn.Module):
+    """RMSNorm with an optional bias (LayerNorm-style)"""
+
+    def __init__(self, ndim, bias=False, eps=1e-5):
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(ndim))              # γ
+        self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None  # β (optional)
+
+    def forward(self, input):
+        # (1) m = mean(x^2)  ---  m = (1/d) * Σ x_i^2
+        m = input.pow(2).mean(dim=-1, keepdim=True)
+
+        # (2)(3) x_hat = x / sqrt(m + eps)  ---  rsqrt = 1/sqrt
+        x_hat = input * torch.rsqrt(m + self.eps)
+
+        # (4) y = γ ⊙ x_hat (+ β)
+        if self.bias is not None:
+            return self.weight * x_hat + self.bias
+        else:
+            return self.weight * x_hat
+
 class CausalSelfAttention(nn.Module):
 
     def __init__(self, config):
@@ -95,14 +118,20 @@ class Block(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.ln_1 = LayerNorm(config.n_embd, bias=config.bias)
+        # Replace LayerNorm with RMSNorm
+        # self.ln_1 = LayerNorm(config.n_embd, bias=config.bias)
+        self.rms_1 = RMSNorm(config.n_embd)
         self.attn = CausalSelfAttention(config)
-        self.ln_2 = LayerNorm(config.n_embd, bias=config.bias)
+        
+        # self.ln_2 = LayerNorm(config.n_embd, bias=config.bias)
+        self.rms_2 = RMSNorm(config.n_embd)
         self.mlp = MLP(config)
 
     def forward(self, x):
-        x = x + self.attn(self.ln_1(x))
-        x = x + self.mlp(self.ln_2(x))
+        # x = x + self.attn(self.ln_1(x))
+        # x = x + self.mlp(self.ln_2(x))
+        x = x + self.attn(self.rms_1(x))
+        x = x + self.mlp(self.rms_2(x))
         return x
 
 @dataclass
@@ -128,7 +157,9 @@ class GPT(nn.Module):
             wpe = nn.Embedding(config.block_size, config.n_embd),
             drop = nn.Dropout(config.dropout),
             h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
-            ln_f = LayerNorm(config.n_embd, bias=config.bias),
+            # Replace LayerNorm with RMSNorm
+            # ln_f = LayerNorm(config.n_embd, bias=config.bias),
+            ln_f = RMSNorm(config.n_embd),
         ))
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
         # with weight tying when using torch.compile() some warnings get generated:
