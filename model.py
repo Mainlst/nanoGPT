@@ -114,6 +114,30 @@ class MLP(nn.Module):
         x = self.dropout(x)
         return x
 
+class MLP_SwiGLU(nn.Module):
+
+    def __init__(self, config):
+        super().__init__()
+        # 中間次元の計算
+        d_ff = int(8/3 * config.n_embd)
+        # w1とw2をまとめた1つの層
+        self.w12 = nn.Linear(config.n_embd, 2 * d_ff, bias=config.bias)
+        self.silu = nn.SiLU()
+        self.c_proj = nn.Linear(d_ff, config.n_embd, bias=config.bias)
+        self.dropout = nn.Dropout(config.dropout)
+
+    def forward(self, x):
+        x = self.w12(x)
+        # 2つに分割
+        x1, x2 = torch.chunk(x, 2, dim=-1)
+        
+        # SwiGLUの計算
+        x = self.silu(x1) * x2
+        
+        x = self.c_proj(x)
+        x = self.dropout(x)
+        return x
+    
 class Block(nn.Module):
 
     def __init__(self, config):
@@ -125,7 +149,7 @@ class Block(nn.Module):
         
         # self.ln_2 = LayerNorm(config.n_embd, bias=config.bias)
         self.rms_2 = RMSNorm(config.n_embd)
-        self.mlp = MLP(config)
+        self.mlp = MLP_SwiGLU(config)
 
     def forward(self, x):
         # x = x + self.attn(self.ln_1(x))
